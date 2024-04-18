@@ -1,0 +1,29 @@
+---
+title: "psy 8712- week 12"
+author: "Lisette Horne"
+date: "2024-04-18"
+output: html_document
+---
+#Script Settings and Resources
+```{r setup, include=FALSE}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+library(tidyverse)
+library(tidytext)
+library(wordcloud)
+library(topicmodels)
+library(tm)
+library(RedditExtractoR)
+library(ldatuning)
+library(dendextend)
+#library(qdap)
+library(textstem)
+library(psych)
+```
+
+#Data Import
+
+#Visualization
+
+#Analysis
+
+
