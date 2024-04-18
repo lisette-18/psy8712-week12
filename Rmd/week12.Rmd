@@ -15,12 +15,37 @@ library(tm)
 library(RedditExtractoR)
 library(ldatuning)
 library(dendextend)
-#library(qdap)
+library(qdap)
 library(textstem)
 library(psych)
 ```
 
 #Data Import
+```{r}
+#reddit_thread_urls <- find_thread_urls(
+  #subreddit = "IOPsychology",
+  #sort_by = "new",
+  #period = "year") %>%
+  #mutate(date_utc = ymd(date_utc))
+
+#thread_urls2 <- filter(reddit_thread_urls, timestamp > as.numeric(as.POSIXct(Sys.Date() - 365)))
+
+#reddit_urls <- reddit_thread_urls$url
+
+#reddit_content <- get_thread_content(reddit_urls)
+
+#week12_tbl <- tibble(
+  #title = reddit_content$threads$title,
+  #upvotes = reddit_content$threads$upvotes)
+
+#write out all files as csv
+#write_csv(reddit_thread_urls, file = "../data/reddit_data.csv")
+#write_csv(week12_tbl, "../data/week12_tbl.csv")
+reddit_thread_urls <- read_csv("../data/reddit_data.csv", show_col_types = FALSE)
+week12_tbl <- read_csv("../data/week12_tbl.csv", show_col_types = FALSE)
+
+```
+
 
 #Visualization
 
