@@ -17,7 +17,8 @@ library(ldatuning)
 library(dendextend)
 library(qdap)
 library(textstem)
-library(psych)
+library(RWeka)
+
 ```
 
 #Data Import
@@ -67,6 +68,16 @@ compare_them <- function(x,y) {
 
 compare_them(io_corpus_original, io_corpus)
 ```
+
+```{r}
+tokenizer <- function(x) NGramTokenizer(x, Weka_control(min=1, max=2))
+
+io_dtm <-  DocumentTermMatrix(io_corpus, control = list(tokenize = tokenizer))
+
+io_slim_dtm <- removeSparseTerms(io_dtm, 0.997)
+```
+
+
 
 
 #Visualization
