@@ -58,6 +58,16 @@ io_corpus <- io_corpus_original %>%
   tm_map(stripWhitespace) 
 ```
 
+```{r}
+compare_them <- function(x,y) {
+  i <- sample.int(length(x), 1)
+  print(x$content[[i]]$content)
+  print(y$content[[i]]$content)
+}
+
+compare_them(io_corpus_original, io_corpus)
+```
+
 
 #Visualization
 
