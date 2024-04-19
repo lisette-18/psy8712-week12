@@ -43,7 +43,19 @@ library(psych)
 #write_csv(week12_tbl, "../data/week12_tbl.csv")
 reddit_thread_urls <- read_csv("../data/reddit_data.csv", show_col_types = FALSE)
 week12_tbl <- read_csv("../data/week12_tbl.csv", show_col_types = FALSE)
+```
 
+```{r}
+io_corpus_original <- VCorpus(VectorSource(week12_tbl$title))
+
+io_corpus <- io_corpus_original %>%
+  tm_map(content_transformer(replace_abbreviation)) %>%
+  tm_map(content_transformer(replace_contraction)) %>%
+  tm_map(content_transformer(str_to_lower)) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>% 
+  tm_map(removeWords, c("io psychology", "iopsy", "iopsych", "io psych", "iopsychology", "riopsychology", "organizational psychology", "industrial organizational psychology", "io", "i/o")) %>%
+  tm_map(stripWhitespace) 
 ```
 
 
