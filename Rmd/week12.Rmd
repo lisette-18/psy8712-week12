@@ -24,10 +24,10 @@ library(caret)
 #Data Import and Cleaning
 ```{r}
 #reddit_thread_urls <- find_thread_urls(
-  #subreddit = "IOPsychology",
+  #subreddit = "IOPsychology", #pulling information from the IOPsychology subreddit per instructions
   #sort_by = "new",
-  #period = "year") %>%
-  #mutate(date_utc = ymd(date_utc))
+  #period = "year") %>% #gathering information from the last year
+  #mutate(date_utc = ymd(date_utc)) #using a universal time
 
 #thread_urls2 <- filter(reddit_thread_urls, timestamp > as.numeric(as.POSIXct(Sys.Date() - 365)))
 
@@ -35,11 +35,11 @@ library(caret)
 
 #reddit_content <- get_thread_content(reddit_urls)
 
-#week12_tbl <- tibble(
+#week12_tbl <- tibble( #pulling the title and upvotes from the reddit contents
   #title = reddit_content$threads$title,
   #upvotes = reddit_content$threads$upvotes)
 
-#write out all files as csv
+#write out all files as csv in order to export in the rather than download
 #write_csv(reddit_thread_urls, file = "../data/reddit_data.csv")
 #write_csv(week12_tbl, "../data/week12_tbl.csv")
 reddit_thread_urls <- read_csv("../data/reddit_data.csv", show_col_types = FALSE)
@@ -47,21 +47,21 @@ week12_tbl <- read_csv("../data/week12_tbl.csv", show_col_types = FALSE)
 ```
 
 ```{r}
-io_corpus_original <- VCorpus(VectorSource(week12_tbl$title))
+io_corpus_original <- VCorpus(VectorSource(week12_tbl$title)) #creating a vcorpus based on data camp instructions
 
-io_corpus <- io_corpus_original %>%
-  tm_map(content_transformer(replace_abbreviation)) %>%
-  tm_map(content_transformer(replace_contraction)) %>%
-  tm_map(content_transformer(str_to_lower)) %>%
-  tm_map(removeNumbers) %>%
+io_corpus <- io_corpus_original %>% #using the original corpus; pre-processing based on the lecture slides
+  tm_map(content_transformer(replace_abbreviation)) %>% #remove abbreviations
+  tm_map(content_transformer(replace_contraction)) %>% #remove contractions
+  tm_map(content_transformer(str_to_lower)) %>% #switch to the lower 
+  tm_map(removeNumbers) %>% #removing numbers
   tm_map(removePunctuation) %>%
   tm_map(removeWords, c("io psychology", "iopsy", "iopsych", "io psych", "iopsychology", "riopsychology", "organizational psychology", "industrial organizational psychology", "io", "i/o")) %>%
   tm_map(stripWhitespace)
 ```
 
 ```{r}
-compare_them <- function(x,y) {
-  casenum <- sample.int(length(x), 1)
+compare_them <- function(x,y) { #create the function in order to compare the two corpuses
+  casenum <- sample.int(length(x), 1) #based on lecture examples, this is how i created the function4dfgv 
   print(x$content[[casenum]]$content)
   print(y$content[[casenum]]$content)
 }
@@ -70,25 +70,24 @@ compare_them(io_corpus_original, io_corpus)
 ```
 
 ```{r}
-tokenizer <- function(x) NGramTokenizer(x, Weka_control(min=1, max=2))
+tokenizer <- function(x) NGramTokenizer(x, Weka_control(min=1, max=2)) #based on lecture material, built a tokenizer to generate unigrams and bigrams
 
-io_dtm <-  DocumentTermMatrix(io_corpus, control = list(tokenize = tokenizer))
+io_dtm <-  DocumentTermMatrix(io_corpus, control = list(tokenize = tokenizer)) #created a dtm using the provided examples on the pre-processed corpus 
 
 
-io_slim_dtm <- removeSparseTerms(io_dtm, 0.997)
+io_slim_dtm <- removeSparseTerms(io_dtm, 0.997) #removed sparse terms
 
-io_dtm <- io_dtm %>%
+io_dtm <- io_dtm %>% #altered dtm to have 
   as.matrix %>%
   as_tibble
 ```
 
 
 ```{r}
-library(ldatuning)
-rowTotals <- apply(io_dtm[,2:328], 1, sum)
+rowTotals <- apply(io_dtm[,2:328], 1, sum) #used this function and the function below to remove columns that had all zeros because otherwise the lda would not run
 io_dtm_clean <- io_dtm[rowTotals> 0, ] 
 
-dtm_tune <- FindTopicsNumber(
+dtm_tune <- FindTopicsNumber( #using this code based on lecture examples to use latent Dorochlet allocation
  io_dtm_clean , 
   topics = seq(2, 10, 1),
   metrics = c(
@@ -98,16 +97,16 @@ dtm_tune <- FindTopicsNumber(
     "Deveaud2014"),
   verbose = T)
 
-FindTopicsNumber(dtm_tune)
+FindTopicsNumber(dtm_tune) #based on outcome, 5 clusters seems like the best idea
 
 lda_results <- LDA(io_dtm_clean, 5)
 
-lda_beta <- tidy(lda_results, matrix = "beta") %>%
+lda_beta <- tidy(lda_results, matrix = "beta") %>% #created lda_beta to get the beta matrix of the LDA 
   group_by(topic) %>%
   top_n(951, beta) %>%
   arrange(topic, -beta)
 
-tidy(lda_results, matrix = "gamma") %>%
+tidy(lda_results, matrix = "gamma") %>% #created this gamma matrix in order to get further information from the LDA; used lecture examples 
   group_by(document) %>%
   top_n(1, gamma) %>%
   slice(1) %>%
@@ -116,14 +115,14 @@ tidy(lda_results, matrix = "gamma") %>%
   arrange(document) 
 
 # Create topics_tbl tibble
-topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
-  group_by(document) %>%
-  top_n(1, gamma) %>%
-  rename(doc_id = document, probability = gamma) %>%
+topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>% #gathered the information from the gamma matrix
+  group_by(document) %>% #ordered by document
+  top_n(1, gamma) %>% #to specify the top documents 
+  rename(doc_id = document, probability = gamma) %>% #renamed the doc id to match the one in the io_corpus
   mutate(doc_id = as.numeric(doc_id)) %>%
-  arrange(doc_id) %>%
-  mutate(original = week12_tbl$title[doc_id]) %>%
-  select(doc_id, original, topic, probability)
+  arrange(doc_id) %>% #arrange by the document identification
+  mutate(original = week12_tbl$title[doc_id]) %>% #pull the original title from the week12_tbl
+  select(doc_id, original, topic, probability) #organize the tibble by the columns mentioned in the instructions
 ``` 
 
 #Question 1
@@ -133,11 +132,11 @@ topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
 
 #Visualization
 ```{r}
-library(wordcloud)
+#created word based on provided lecture example
 wordcloud(
   words = names(io_dtm),
   freq = colSums(io_dtm),
-  max.words = 50,
+  max.words = 50, #used 50 to have a balance of word provided
   colors = brewer.pal(9, "Blues")
 )
 ```
@@ -152,14 +151,18 @@ final_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
   arrange(doc_id) %>%
   mutate(original = week12_tbl$title[doc_id]) %>%
   mutate(upvotes = week12_tbl$upvotes[doc_id]) %>%
-  select(doc_id, original, topic, probability, upvotes)
+  select(doc_id, original, topic, probability, upvotes) #created the tibble based on the code from the topics_tbl and added the upvotes column from the original week12_tbl
 ```
 
 ```{r}
+#ran an anova to determine if upvotes differs by topic
 summary(aov(upvotes~topic, data = final_tbl))
+#the results found that there is no signficiant difference
 ```
 
 ```{r}
+#created a lm model for machine learning analysis
+#created the following code based on previous project examples and lecture
 holdout_indices <- createDataPartition(final_tbl$upvotes,
                                        p = .25,
                                        list = T)$Resample1
@@ -190,5 +193,5 @@ cv_lm #0.045
 holdout_m #0.017
 ```
 
-
+Based on the anova stats that is presented and found that their was no statistical difference in upvotes by topic. This suggests that no topic experienced a significant change in upvotes provided compared to the other 4 topics. For the machine learning analysis we find that the cv value is 0.045 and the holdout prediction is 0.017. This suggests that there may not be a significant relationship between upvotes by topic.
 
