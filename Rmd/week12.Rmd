@@ -73,22 +73,22 @@ tokenizer <- function(x) NGramTokenizer(x, Weka_control(min=1, max=2))
 
 io_dtm <-  DocumentTermMatrix(io_corpus, control = list(tokenize = tokenizer))
 
-io_dtm %>% 
-  as.matrix %>%
-  as_tibble %>%
-  View
 
 io_slim_dtm <- removeSparseTerms(io_dtm, 0.997)
+
+io_dtm <- io_dtm %>%
+  as.matrix %>%
+  as_tibble
 ```
 
 
 ```{r}
 library(ldatuning)
-rowTotals <- apply(io_slim_dtm[,2:328], 1, sum)
-io_slim_dtm_clean <- io_slim_dtm[rowTotals> 0, ] 
+rowTotals <- apply(io_dtm[,2:328], 1, sum)
+io_dtm_clean <- io_dtm[rowTotals> 0, ] 
 
 dtm_tune <- FindTopicsNumber(
- io_slim_dtm_clean , 
+ io_dtm_clean , 
   topics = seq(2, 10, 1),
   metrics = c(
     "Griffiths2004",
@@ -99,7 +99,7 @@ dtm_tune <- FindTopicsNumber(
 
 FindTopicsNumber(dtm_tune)
 
-LDA(io_slim_dtm_clean, 5)
+lda_results <- LDA(io_dtm_clean, 5)
 
 lda_beta <- tidy(lda_results, matrix = "beta") %>%
   group_by(topic) %>%
@@ -123,8 +123,6 @@ topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
   arrange(doc_id) %>%
   mutate(original = week12_tbl$title[doc_id]) %>%
   select(doc_id, original, topic, probability)
-
-
 ``` 
 
 #Question 1
@@ -132,6 +130,16 @@ topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
 #Question 2
 ##Looking at the information, I do not think that the names derived from your interpretation of the beta matrix does not conceptullay match with the content of the original posts. This is a relfecttion of the content validity and the construct validity.
 
+#Visualization
+```{r}
+library(wordcloud)
+wordcloud(
+  words = names(io_dtm),
+  freq = colSums(io_dtm),
+  max.words = 25,
+  colors = brewer.pal(9, "Blues")
+)
+```
 
 
 
