@@ -18,9 +18,10 @@ library(dendextend)
 library(qdap)
 library(textstem)
 library(RWeka)
+library(caret)
 ```
 
-#Data Import
+#Data Import and Cleaning
 ```{r}
 #reddit_thread_urls <- find_thread_urls(
   #subreddit = "IOPsychology",
@@ -136,11 +137,58 @@ library(wordcloud)
 wordcloud(
   words = names(io_dtm),
   freq = colSums(io_dtm),
-  max.words = 25,
+  max.words = 50,
   colors = brewer.pal(9, "Blues")
 )
 ```
 
+#Analysis
+```{r}
+final_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
+  group_by(document) %>%
+  top_n(1, gamma) %>%
+  rename(doc_id = document, probability = gamma) %>%
+  mutate(doc_id = as.numeric(doc_id)) %>%
+  arrange(doc_id) %>%
+  mutate(original = week12_tbl$title[doc_id]) %>%
+  mutate(upvotes = week12_tbl$upvotes[doc_id]) %>%
+  select(doc_id, original, topic, probability, upvotes)
+```
+
+```{r}
+summary(aov(upvotes~topic, data = final_tbl))
+```
+
+```{r}
+holdout_indices <- createDataPartition(final_tbl$upvotes,
+                                       p = .25,
+                                       list = T)$Resample1
+test_tbl <- final_tbl[holdout_indices,]
+training_tbl <- final_tbl[-holdout_indices,]
+
+training_folds <- createFolds(training_tbl$upvotes)
+
+model_lm <- train(
+  upvotes ~ topic,
+  training_tbl,
+  method = "lm", #used "lm" because it was the only one that would run for me
+  na.action = na.pass,
+  preProcess = "medianImpute",
+  trControl = trainControl(method = "cv",
+                           number = 10,
+                           verboseIter = T,
+                           indexOut = training_folds)
+)
+model_lm
+cv_lm <- max(model_lm$results$Rsquared)
+holdout_m <- cor(
+  predict(model_lm, test_tbl, na.action = na.pass),
+  test_tbl$upvotes
+)^2
+
+cv_lm #0.045 
+holdout_m #0.017
+```
 
 
 
