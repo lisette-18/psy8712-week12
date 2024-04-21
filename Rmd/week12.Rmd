@@ -6,7 +6,7 @@ output: html_document
 ---
 #Script Settings and Resources
 ```{r setup, include=FALSE}
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
@@ -97,7 +97,7 @@ dtm_tune <- FindTopicsNumber( #using this code based on lecture examples to use 
     "Deveaud2014"),
   verbose = T)
 
-FindTopicsNumber(dtm_tune) #based on outcome, 5 clusters seems like the best idea
+#FindTopicsNumber(dtm_tune) #based on outcome, 5 clusters seems like the best idea
 
 lda_results <- LDA(io_dtm_clean, 5)
 
