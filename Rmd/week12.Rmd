@@ -18,7 +18,6 @@ library(dendextend)
 library(qdap)
 library(textstem)
 library(RWeka)
-
 ```
 
 #Data Import
@@ -54,16 +53,16 @@ io_corpus <- io_corpus_original %>%
   tm_map(content_transformer(replace_contraction)) %>%
   tm_map(content_transformer(str_to_lower)) %>%
   tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>% 
+  tm_map(removePunctuation) %>%
   tm_map(removeWords, c("io psychology", "iopsy", "iopsych", "io psych", "iopsychology", "riopsychology", "organizational psychology", "industrial organizational psychology", "io", "i/o")) %>%
-  tm_map(stripWhitespace) 
+  tm_map(stripWhitespace)
 ```
 
 ```{r}
 compare_them <- function(x,y) {
-  i <- sample.int(length(x), 1)
-  print(x$content[[i]]$content)
-  print(y$content[[i]]$content)
+  casenum <- sample.int(length(x), 1)
+  print(x$content[[casenum]]$content)
+  print(y$content[[casenum]]$content)
 }
 
 compare_them(io_corpus_original, io_corpus)
@@ -74,14 +73,66 @@ tokenizer <- function(x) NGramTokenizer(x, Weka_control(min=1, max=2))
 
 io_dtm <-  DocumentTermMatrix(io_corpus, control = list(tokenize = tokenizer))
 
+io_dtm %>% 
+  as.matrix %>%
+  as_tibble %>%
+  View
+
 io_slim_dtm <- removeSparseTerms(io_dtm, 0.997)
 ```
 
 
+```{r}
+library(ldatuning)
+rowTotals <- apply(io_slim_dtm[,2:328], 1, sum)
+io_slim_dtm_clean <- io_slim_dtm[rowTotals> 0, ] 
+
+dtm_tune <- FindTopicsNumber(
+ io_slim_dtm_clean , 
+  topics = seq(2, 10, 1),
+  metrics = c(
+    "Griffiths2004",
+    "CaoJuan2009",
+    "Arun2010",
+    "Deveaud2014"),
+  verbose = T)
+
+FindTopicsNumber(dtm_tune)
+
+LDA(io_slim_dtm_clean, 5)
+
+lda_beta <- tidy(lda_results, matrix = "beta") %>%
+  group_by(topic) %>%
+  top_n(951, beta) %>%
+  arrange(topic, -beta)
+
+tidy(lda_results, matrix = "gamma") %>%
+  group_by(document) %>%
+  top_n(1, gamma) %>%
+  slice(1) %>%
+  ungroup %>%
+  mutate(document = as.numeric(document)) %>%
+  arrange(document) 
+
+# Create topics_tbl tibble
+topics_tbl <- tibble(tidy(lda_results, matrix = "gamma")) %>%
+  group_by(document) %>%
+  top_n(1, gamma) %>%
+  rename(doc_id = document, probability = gamma) %>%
+  mutate(doc_id = as.numeric(doc_id)) %>%
+  arrange(doc_id) %>%
+  mutate(original = week12_tbl$title[doc_id]) %>%
+  select(doc_id, original, topic, probability)
 
 
-#Visualization
+``` 
 
-#Analysis
+#Question 1
+##Using the beta matrix alone, the highest beta value is very low, which may suggest that the topic mapping is not strongm but based on the topics, I would think that topic 1 -  career, topic 2 = measurements, topic 3 =  readings, topic 4 = more career, topic 5 = graduate education
+#Question 2
+##Looking at the information, I do not think that the names derived from your interpretation of the beta matrix does not conceptullay match with the content of the original posts. This is a relfecttion of the content validity and the construct validity.
+
+
+
 
 
